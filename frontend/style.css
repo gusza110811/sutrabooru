@@ -1,0 +1,31 @@
+body {
+    display: flex;
+    flex-direction: column;
+    color: #000000;
+    font-family: "Lexend";
+    width: 760px;
+    padding: 10px 10px;
+    background-color: #AAF5A4;
+    outline: 5px solid #225522 ;
+}
+
+html {
+    display: flex;
+    justify-content: center;
+    background-color: #AAE5A4; /* r34 green :3 */
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 5, 5, 0, 0;
+}
+
+.muted {
+    color: #888888;
+}
+
+@font-face {
+    font-family: Lexend;
+    src: url('/Lexend.ttf');
+}

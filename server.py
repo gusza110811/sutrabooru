@@ -48,7 +48,6 @@ class Backend():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 thread INTEGER NOT NULL,
                 created INTEGER NOT NULL,
-                bumped INTEGER NOT NULL,
                 author TEXT NOT NULL,
                 body TEXT NOT NULL
             )

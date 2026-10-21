@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/style.css">
+    <title>Sutrabooru</title>
+</head>
+<body id="body">
+    <h1><a href="/">Sutrabooru</a></h1>
+
+    <h2 id="board_name"></h2>
+    <div id="board_desc"></div>
+
+    <ul id="threads">
+    </ul>
+
+</body>
+</html>
+
+<template id="thread_template">
+    <li>
+        <b><a href="/" class="name">lorem-ipsum</a></b> -
+        <span class="created muted">long before time had a name</span>
+    </li>
+</template>
+
+<script type="module">
+
+    function timeAgo(timestamp) {
+        // Ensure timestamp is in milliseconds (multiply by 1000 if it's in seconds)
+        const diffMs = Date.now() - timestamp;
+        const diffSec = Math.floor(diffMs / 1000);
+        const diffMin = Math.floor(diffSec / 60);
+        const diffHours = Math.floor(diffMin / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffSec < 60) return 'Just now';
+        if (diffMin < 60) return `${diffMin} min${diffMin === 1 ? '' : 's'} ago`;
+        if (diffHours < 24) return `${diffHours} hr${diffHours === 1 ? '' : 's'} ago`;
+        if (diffDays < 30) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+        
+        return new Date(timestamp).toLocaleDateString();
+    }
+
+    function add_entry(id, title, created) {
+        let tem = document.getElementById("thread_template");
+        let list = document.getElementById("threads");
+
+        let clone = tem.content.cloneNode(true);
+
+        clone.querySelector('.name').textContent = title;
+        clone.querySelector('.name').href = "/t/" + id;
+        clone.querySelector('.created').textContent = timeAgo(created*1000);
+
+        list.appendChild(clone);
+    }
+
+    // `/b/...` (normally)
+    let board = window.location.pathname.slice(3);
+
+    let response = await fetch("/api/b/"+board);
+    let board_data = await response.json();
+
+    console.log(board_data)
+
+    document.getElementById("board_name").textContent = "b/" + board + "/";
+    document.getElementById("board_desc").textContent = board_data["description"]
+
+    response = await fetch('/api/ts/' + board);
+
+    if (!response.ok) {
+        console.log("failed to load threads:", response.body);
+    }
+
+    let data = await response.json();
+    data.sort((a, b) => a["bumped"] - b["bumped"]);
+    console.log(data);
+
+    for (let item of data) {
+        add_entry(item["id"], item["title"],item["created"]);
+    }
+</script>

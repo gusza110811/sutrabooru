@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/style.css">
+    <title>Sutrabooru</title>
+</head>
+<body id="body">
+    <h1><a href="/">Sutrabooru</a></h1>
+
+    <h2> <a id="board_name" class="muted"></a> <span id="thread_title"></span></h2>
+
+    <div id="messages"></div>
+
+</body>
+</html>
+
+<template id="message_template">
+    <article style="display: flex;">
+        <div style="display: flex; flex-direction: column;">
+            <b class="author">lorem-ipsum</b>
+            <span class="created muted">some time ago</span>
+        </div>
+        <div class="body_text" style="margin-left: 10px;"></div>
+    </article>
+</template>
+
+<script type="module">
+
+    function timeAgo(timestamp) {
+        // Ensure timestamp is in milliseconds (multiply by 1000 if it's in seconds)
+        const diffMs = Date.now() - timestamp;
+        const diffSec = Math.floor(diffMs / 1000);
+        const diffMin = Math.floor(diffSec / 60);
+        const diffHours = Math.floor(diffMin / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffSec < 60) return 'Just now';
+        if (diffMin < 60) return `${diffMin} min${diffMin === 1 ? '' : 's'} ago`;
+        if (diffHours < 24) return `${diffHours} hr${diffHours === 1 ? '' : 's'} ago`;
+        if (diffDays < 30) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+        
+        return new Date(timestamp).toLocaleDateString();
+    }
+
+    function add_entry(id, author, body, created) {
+        let tem = document.getElementById("message_template");
+        let list = document.getElementById("messages");
+
+        let clone = tem.content.cloneNode(true);
+
+        clone.querySelector('.author').textContent = author;
+        clone.querySelector('.created').textContent = timeAgo(created*1000);
+        clone.querySelector('.body_text').textContent = body;
+
+        list.appendChild(clone);
+    }
+
+    // `/t/...` (normally)
+    let thread = window.location.pathname.slice(3);
+
+    let response = await fetch('/api/t/' + thread);
+
+    let thread_data = await response.json();
+
+    let board = thread_data["board"]
+
+    response = await fetch("/api/b/"+board);
+    let board_data = await response.json();
+
+    document.getElementById("board_name").href = "/b/" + board + "/";
+    document.getElementById("board_name").textContent = "b/" + board + "/";
+    document.getElementById("thread_title").textContent = thread_data["title"]
+
+    response = await fetch('/api/ms/' + thread);
+
+    if (!response.ok) {
+        console.log("failed to load messages:", response.body);
+    }
+
+    let data = await response.json();
+
+    for (let item of data) {
+        add_entry(item["id"], item["author"], item["body"], item["created"]);
+    }
+</script>

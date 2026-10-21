@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/style.css">
+    <title>Sutrabooru</title>
+</head>
+<body id="body">
+    <h1>Sutrabooru</h1>
+
+    <ul id="boards">
+    </ul>
+
+</body>
+</html>
+
+<template id="board_template">
+    <li>
+        <h3><a href="/" class="name">lorem-ipsum</a></h3>
+        <p class="description">Lorem ipsum dolor sit amet</p>
+    </li>
+</template>
+
+<script type="module">
+    function add_entry(name,description) {
+        let tem = document.getElementById("board_template");
+        let list = document.getElementById("boards");
+
+        let clone = tem.content.cloneNode(true);
+
+        clone.querySelector('.name').textContent = name
+        clone.querySelector('.name').href = "/b/" + name
+        clone.querySelector('.description').textContent = description
+
+        list.appendChild(clone)
+    }
+
+    let response = await fetch('/api/bs');
+
+    if (!response.ok) {
+        console.log("failed to load boards:", response.body);
+    }
+
+    let data = await response.json();
+    console.log(data);
+
+    for (let item of data) {
+        add_entry(item["name"],item["description"])
+    }
+</script>
