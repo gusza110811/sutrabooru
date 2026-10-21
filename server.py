@@ -109,16 +109,26 @@ class Backend():
         if _:
             raise ValueError("Too many delimiter")
 
-        return (count, start)
+        return [int(count), int(start)]
 
     def get_boards(self):
         self.cursor.execute("SELECT * FROM boards")
         return self.cursor.fetchall()
     def get_threads(self, board:str, slice:str="0~-1"):
-        self.cursor.execute("SELECT * FROM threads WHERE board = ? ORDER BY bumped DESC LIMIT ? OFFSET ?;", (board,*self.generate_slice(slice)))
+        slice = self.generate_slice(slice)
+        order = "DESC"
+        if slice[1] < 0:
+            slice[1] = 0-slice[1]
+            order = "ASC"
+        self.cursor.execute(f"SELECT * FROM threads WHERE board = ? ORDER BY bumped {order} LIMIT ? OFFSET ?;", (board,*slice))
         return self.cursor.fetchall()
     def get_messages(self, thread:int, slice:str="0~-1"):
-        self.cursor.execute("SELECT * FROM messages WHERE thread = ? ORDER BY created ASC LIMIT ? OFFSET ?;", (thread,*self.generate_slice(slice)))
+        slice = self.generate_slice(slice)
+        order = "ASC"
+        if slice[1] < 0:
+            slice[1] = 0-slice[1]
+            order = "DESC"
+        self.cursor.execute(f"SELECT * FROM messages WHERE thread = ? ORDER BY created {order} LIMIT ? OFFSET ?;", (thread,*slice))
         return self.cursor.fetchall()
 
     def get_board(self, name):
@@ -154,7 +164,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         }
 
         self.POST_handlers = {
-            "b": backend.create_board,
+            #"b": backend.create_board,
             "t": backend.create_thread,
             "m": backend.create_message
         }
@@ -260,13 +270,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             else:
                 try:
                     result = handler(**param)
-                    result = [dict(item) for item in result]
                     if isinstance(result,str):
                         self.send_error_api(400, result)
                         return
                     else:
                         self.send_response(201)
-                    self.send_header("Content-type", "text/json")
+                    result = [dict(item) for item in result]
+                    self.send_header("Content-type", "application/json")
                     self.end_headers()
                     self.wfile.write(json.dumps(result).encode())
                 except TypeError as e:
