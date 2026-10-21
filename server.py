@@ -157,7 +157,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if self.path.startswith("/api/"):
-            _, handler_name, *tail = self.path[1:].split("/")
+            _, handler_name, *tail = [item for item in self.path[1:].split("/") if item]
             handler = self.GET_handlers.get(handler_name,None)
             if not handler_name:
                 self.send_error(404, "Invalid Path")
