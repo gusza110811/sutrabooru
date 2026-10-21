@@ -150,7 +150,7 @@ class Backend():
 backend:Backend
 
 class Handler(http.server.BaseHTTPRequestHandler):
-
+    protocol_version = "HTTP/1.1"
     def __init__(self, request, client_address, server):
         backend = self.backend = Backend()
 
@@ -246,12 +246,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             except ValueError:
                 self.send_error_api(400, "Invalid Content-Length")
                 return
-            if length <= 0 or length > 2**16:
-                self.send_error_api(413, "content too large")
+            if length <= 0:
+                self.send_error_api(413, "body must exist")
                 return
 
             if length > 2**16:
-                self.send_error_api(413, "content too large")
+                self.send_error_api(413, "body too large")
                 return
 
             param = self.rfile.read(length)

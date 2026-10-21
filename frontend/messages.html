@@ -74,8 +74,7 @@
         let result = await postMsg(Number(thread), name.value, body.value);
 
         if (!result.ok) {
-            const data = await result.json().catch(() => ({}));
-            error.textContent = data.err || "Failed to post";
+            error.textContent = result.data.err || "Failed to post";
             return;
         }
 
