@@ -64,8 +64,8 @@
 
     console.log(board_data)
 
-    document.getElementById("board_name").textContent = "b/" + board + "/";
-    document.getElementById("board_desc").textContent = board_data["description"]
+    document.getElementById("board_name").textContent = board_data["name"];
+    document.getElementById("board_desc").textContent = board_data["description"];
 
     response = await fetch('/api/ts/' + board);
 
@@ -74,7 +74,6 @@
     }
 
     let data = await response.json();
-    data.sort((a, b) => a["bumped"] - b["bumped"]);
     console.log(data);
 
     for (let item of data) {

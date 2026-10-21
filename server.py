@@ -130,13 +130,13 @@ class Backend():
             self.cursor.execute("SELECT * FROM threads WHERE id = ?", (int(id),))
             return self.cursor.fetchone()
         except ValueError:
-            return "Invalid ID"
+            return (404, "Invalid ID")
     def get_message(self, id:int):
         try:
             self.cursor.execute("SELECT * FROM messages WHERE id = ?", (id,))
             return self.cursor.fetchone()
         except ValueError:
-            return "Invalid ID"
+            return (404, "Invalid ID")
 
 backend:Backend
 
@@ -161,12 +161,23 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         }
         super().__init__(request,client_address,server)
 
+    def finish(self):
+        self.backend.database.close()
+
+        return super().finish()
+
+    def send_error_api(self, code, message = None):
+        self.send_response(code)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({"err":message}).encode())
+
     def do_GET(self):
         if self.path.startswith("/api/"):
             _, handler_name, *tail = [item for item in self.path[1:].split("/") if item]
             handler = self.GET_handlers.get(handler_name,None)
-            if not handler_name:
-                self.send_error(404, "Invalid Path")
+            if handler is None:
+                self.send_error_api(404, "Invalid Path")
             else:
                 try:
                     result = handler(*tail)
@@ -174,44 +185,43 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         result = [dict(item) for item in result]
                     else:
                         result = dict(result)
-                    if isinstance(result, str):
-                        self.send_error(404,result)
+                    if isinstance(result, tuple):
+                        self.send_error_api(*result)
                     else:
                         self.send_response(200)
-                        self.send_header("Content-type", "text/json")
+                        self.send_header("Content-type", "application/json")
                         self.end_headers()
                         self.wfile.write(json.dumps(result).encode())
                 except TypeError as e:
-                    self.send_error(400, f"Invalid Arguments: {e}")
+                    self.send_error_api(400, f"Invalid Arguments: {e}")
                 except ValueError as e:
-                    self.send_error(400, f"Invalid Arguments: {e}")
+                    self.send_error_api(400, f"Invalid Arguments: {e}")
         else:
+            real_path = os.path.normpath("frontend" + self.path)
+            log(real_path)
             if self.path == "/":
                 file = "frontend/boards.html"
             elif self.path.startswith("/b/"):
                 file = "frontend/threads.html"
             elif self.path.startswith("/t/"):
                 file = "frontend/messages.html"
-            elif os.path.exists("frontend" + self.path):
+            elif os.path.exists(real_path):
+                if not real_path.startswith("frontend"):
+                    self.send_error(403)
+                    return
+
                 file = "frontend" + self.path
             else:
                 self.send_error(404)
                 return
 
-            if file.endswith(".php"):
-                result = subprocess.run(["php", file],capture_output=True)
-                if result.returncode != 0:
-                    self.send_error(500)
-                else:
-                    data = result.stdout
-                    file_type = "text/html"
-            else:
-                data = open(file, "rb").read()
-                file_type = self.guess_type(file)
+            data = open(file, "rb").read()
+            file_type = self.guess_type(file)
 
             log(file, file_type)
             self.send_response(200)
             self.send_header("Content-type", file_type)
+            self.send_header("Cache-Control", "public, max-age=3600, immutable")
             self.end_headers()
             self.wfile.write(data)
 
@@ -220,25 +230,29 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             handler_name = self.path[5:]
             handler = self.POST_handlers.get(handler_name,None)
             length = int(self.headers["Content-Length"])
+
+            if length > 2^16:
+                self.send_error_api(413, "content too large")
+
             param = self.rfile.read(length)
 
             try:
                 param = json.loads(param.decode())
             except UnicodeDecodeError:
-                self.send_error(400, "Body is not plain text")
+                self.send_error_api(400, "Body is not plain text")
                 return
             except json.decoder.JSONDecodeError as e:
-                self.send_error(400, f"Invalid JSON: {e}")
+                self.send_error_api(400, f"Invalid JSON: {e}")
                 return
 
-            if not handler_name:
-                self.send_error(404, "Invalid Path")
+            if handler is None:
+                self.send_error_api(404, "Invalid Path")
             else:
                 try:
                     result = handler(**param)
                     result = [dict(item) for item in result]
                     if isinstance(result,str):
-                        self.send_error(400, result)
+                        self.send_error_api(400, result)
                         return
                     else:
                         self.send_response(201)
@@ -246,7 +260,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     self.end_headers()
                     self.wfile.write(json.dumps(result).encode())
                 except TypeError as e:
-                    self.send_error(400, "Invalid Arguments")
+                    self.send_error_api(400, "Invalid Arguments")
         else:
             self.send_error(403)
 
@@ -254,9 +268,6 @@ if __name__ == "__main__":
     os.chdir(os.path.dirname(__file__))
 
     Backend().ensure()
-    if not shutil.which("php"):
-        sys.exit("PHP not available")
-
     server = http.server.ThreadingHTTPServer(("",PORT), Handler)
 
     log(f"starting server on port {PORT}")
