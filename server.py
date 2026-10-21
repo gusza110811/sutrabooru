@@ -4,9 +4,8 @@ import sys
 import json
 import time
 import os
-import shutil
-import subprocess
 import secrets
+import mimetypes
 
 PORT = 3001
 
@@ -167,16 +166,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         return super().finish()
 
     def guess_type(self, name:str):
-        file, extension = name.rsplit(".",1)
-        match extension:
-            case "html":
-                return "text/html"
-            case "css":
-                return "text/css"
-            case "js":
-                return "application/javascript"
-            case "ico":
-                return "image/x-icon"
+        return mimetypes.guess_type(name)[0] or "application/octet-stream"
 
     def send_error_api(self, code, message = None):
         self.send_response(code)
@@ -193,17 +183,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
             else:
                 try:
                     result = handler(*tail)
+                    if isinstance(result, tuple):
+                        self.send_error_api(*result)
+                        return
                     if isinstance(result, list):
                         result = [dict(item) for item in result]
                     else:
                         result = dict(result)
-                    if isinstance(result, tuple):
-                        self.send_error_api(*result)
-                    else:
-                        self.send_response(200)
-                        self.send_header("Content-type", "application/json")
-                        self.end_headers()
-                        self.wfile.write(json.dumps(result).encode())
+                    self.send_response(200)
+                    self.send_header("Content-type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps(result).encode())
                 except TypeError as e:
                     self.send_error_api(400, f"Invalid Arguments: {e}")
                 except ValueError as e:
@@ -222,7 +212,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     self.send_error(403)
                     return
 
-                file = "frontend" + self.path
+                file = real_path
             else:
                 self.send_error(404)
                 return
@@ -241,7 +231,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if self.path.startswith("/api/"):
             handler_name = self.path[5:]
             handler = self.POST_handlers.get(handler_name,None)
-            length = int(self.headers["Content-Length"])
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                self.send_error_api(400, "Invalid Content-Length")
+                return
+            if length <= 0 or length > 2**16:
+                self.send_error_api(413, "content too large")
+                return
 
             if length > 2**16:
                 self.send_error_api(413, "content too large")
