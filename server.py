@@ -106,29 +106,36 @@ class Backend():
         self.bump_thread(thread)
         return res
 
+    def generate_slice(self, source:str):
+        start, count, *_ = source.split("~")
+        if _:
+            raise ValueError("Too many delimiter")
+
+        return (count, start)
+
     def get_boards(self):
         self.cursor.execute("SELECT * FROM boards")
         return self.cursor.fetchall()
-    def get_threads(self, board:str):
-        self.cursor.execute("SELECT * FROM threads WHERE board = ?", (board,))
+    def get_threads(self, board:str, slice:str="0~-1"):
+        self.cursor.execute("SELECT * FROM threads WHERE board = ? ORDER BY bumped DESC LIMIT ? OFFSET ?;", (board,*self.generate_slice(slice)))
         return self.cursor.fetchall()
-    def get_messages(self, thread:int):
-        self.cursor.execute("SELECT * FROM messages WHERE thread = ?", (thread,))
+    def get_messages(self, thread:int, slice:str="0~-1"):
+        self.cursor.execute("SELECT * FROM messages WHERE thread = ? ORDER BY created ASC LIMIT ? OFFSET ?;", (thread,*self.generate_slice(slice)))
         return self.cursor.fetchall()
 
     def get_board(self, name):
         self.cursor.execute("SELECT * FROM boards WHERE name = ?", (name,))
-        return self.cursor.fetchall()
+        return self.cursor.fetchone()
     def get_thread(self, id:int):
         try:
             self.cursor.execute("SELECT * FROM threads WHERE id = ?", (int(id),))
-            return self.cursor.fetchall()
+            return self.cursor.fetchone()
         except ValueError:
             return "Invalid ID"
     def get_message(self, id:int):
         try:
             self.cursor.execute("SELECT * FROM messages WHERE id = ?", (id,))
-            return self.cursor.fetchall()
+            return self.cursor.fetchone()
         except ValueError:
             return "Invalid ID"
 
@@ -163,7 +170,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(404, "Invalid Path")
             else:
                 try:
-                    result = [dict(item) for item in handler(*tail)]
+                    result = handler(*tail)
+                    if isinstance(result, list):
+                        result = [dict(item) for item in result]
+                    else:
+                        result = dict(result)
                     if isinstance(result, str):
                         self.send_error(404,result)
                     else:
@@ -172,7 +183,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         self.end_headers()
                         self.wfile.write(json.dumps(result).encode())
                 except TypeError as e:
-                    self.send_error(400, "Invalid Arguments")
+                    self.send_error(400, f"Invalid Arguments: {e}")
+                except ValueError as e:
+                    self.send_error(400, f"Invalid Arguments: {e}")
         else:
             if self.path == "/":
                 file = "frontend/boards.html"
