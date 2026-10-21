@@ -243,8 +243,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             handler = self.POST_handlers.get(handler_name,None)
             length = int(self.headers["Content-Length"])
 
-            if length > 2^16:
+            if length > 2**16:
                 self.send_error_api(413, "content too large")
+                return
 
             param = self.rfile.read(length)
 
