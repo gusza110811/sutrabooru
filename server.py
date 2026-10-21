@@ -251,6 +251,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_error(403)
 
 if __name__ == "__main__":
+    os.chdir(os.path.dirname(__file__))
+
     Backend().ensure()
     if not shutil.which("php"):
         sys.exit("PHP not available")
