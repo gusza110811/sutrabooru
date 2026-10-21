@@ -140,7 +140,7 @@ class Backend():
 
 backend:Backend
 
-class Handler(http.server.SimpleHTTPRequestHandler):
+class Handler(http.server.BaseHTTPRequestHandler):
 
     def __init__(self, request, client_address, server):
         backend = self.backend = Backend()
@@ -165,6 +165,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.backend.database.close()
 
         return super().finish()
+
+    def guess_type(self, name:str):
+        file, extension = name.rsplit(".",1)
+        match extension:
+            case "html":
+                return "text/html"
+            case "css":
+                return "text/css"
+            case "js":
+                return "application/javascript"
+            case "ico":
+                return "image/x-icon"
 
     def send_error_api(self, code, message = None):
         self.send_response(code)
