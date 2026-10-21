@@ -99,7 +99,7 @@ class Backend():
     def create_message(self, thread:int, author:str, body:str):
         if not self.exists("threads","id",thread):
             return f"Thread {thread} does not exist"
-        self.cursor.execute("INSERT INTO messages (thread, created, bumped, author, body) VALUES (?, ?, ?, ?, ?) RETURNING id;", (thread, int(time.time()), int(time.time()), author, body))
+        self.cursor.execute("INSERT INTO messages (thread, created, author, body) VALUES (?, ?, ?, ?) RETURNING id;", (thread, int(time.time()), author, body))
         res = self.cursor.fetchall()
         self.database.commit()
         self.bump_thread(thread)
