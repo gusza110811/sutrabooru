@@ -181,8 +181,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def send_error_api(self, code, message = None):
         self.send_response(code)
         self.send_header("Content-type", "application/json")
+        self.write(json.dumps({"err":message}).encode())
+
+    def write(self, binary:bytes):
+        #log(len(binary), binary)
+        self.send_header("Content-length", str(len(binary)))
         self.end_headers()
-        self.wfile.write(json.dumps({"err":message}).encode())
+        self.wfile.write(binary)
 
     def do_GET(self):
         if self.path.startswith("/api/"):
@@ -202,8 +207,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         result = dict(result)
                     self.send_response(200)
                     self.send_header("Content-type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(json.dumps(result).encode())
+                    self.write(json.dumps(result).encode())
                 except TypeError as e:
                     self.send_error_api(400, f"Invalid Arguments: {e}")
                 except ValueError as e:
@@ -234,8 +238,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-type", file_type)
             self.send_header("Cache-Control", "public, max-age=3600, must-revalidate")
-            self.end_headers()
-            self.wfile.write(data)
+            self.write(data)
 
     def do_POST(self):
         if self.path.startswith("/api/"):
@@ -277,8 +280,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         self.send_response(201)
                     result = [dict(item) for item in result]
                     self.send_header("Content-type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(json.dumps(result).encode())
+                    self.write(json.dumps(result).encode())
                 except TypeError as e:
                     self.send_error_api(400, "Invalid Arguments")
         else:
