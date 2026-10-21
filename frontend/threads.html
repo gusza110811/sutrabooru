@@ -22,6 +22,8 @@
     <li>
         <b><a href="/" class="name">lorem-ipsum</a></b> -
         <span class="created muted">long before time had a name</span>
+        <br>
+        "<span class="latest_msg muted">something?</span>" - <span class="last_activity muted">somewhen</span>
     </li>
 </template>
 
@@ -29,7 +31,7 @@
 
     import { timeAgo } from '/module.js';
 
-    function add_entry(id, title, created) {
+    function add_entry(id, title, created, msg, msg_created) {
         let tem = document.getElementById("thread_template");
         let list = document.getElementById("threads");
 
@@ -38,6 +40,8 @@
         clone.querySelector('.name').textContent = title;
         clone.querySelector('.name').href = "/t/" + id;
         clone.querySelector('.created').textContent = timeAgo(created*1000);
+        clone.querySelector(".latest_msg").textContent = msg;
+        clone.querySelector(".last_activity").textContent = timeAgo(msg_created*1000)
 
         list.appendChild(clone);
     }
@@ -53,6 +57,7 @@
     document.getElementById("board_name").textContent = board_data["name"];
     document.getElementById("board_desc").textContent = board_data["description"];
 
+
     response = await fetch('/api/ts/' + board);
 
     if (!response.ok) {
@@ -63,6 +68,9 @@
     console.log(data);
 
     for (let item of data) {
-        add_entry(item["id"], item["title"],item["created"]);
+        response = await fetch("/api/ms/" + item["id"] + "/-1~1") // last message; count of 1
+        let latest = (await response.json())[0];
+
+        add_entry(item["id"], item["title"],item["created"],latest["body"],latest["created"]);
     }
 </script>

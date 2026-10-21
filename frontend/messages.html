@@ -15,12 +15,12 @@
 
     <hr>
 
-    <div id="post">
-        <span><b>Name</b> <input type="text" name="name" id="post_name"> </span>
+    <div id="post" style="justify-self: right; text-align: right;">
+        <span><b>Name</b> <input type="text" name="name" id="post_name" style="width: 20ch;"> </span>
         <br>
         <span style="display: inline-block; vertical-align: text-top;">
             <b>Message</b>
-            <textarea name="body" id="post_body" rows="5" style="vertical-align: top;"></textarea>
+            <textarea name="body" id="post_body" rows="5" style="vertical-align: top; resize: vertical; width: 20ch;"></textarea>
         </span>
         <br>
         <button id="post_button">Join the conversation</button>
@@ -31,12 +31,10 @@
 </html>
 
 <template id="message_template">
-    <article style="display: flex;">
-        <div style="display: flex; flex-direction: column;">
-            <b class="author">lorem-ipsum</b>
-            <span class="created muted">some time ago</span>
-        </div>
-        <div class="body_text" style="margin-left: 10px;"></div>
+    <article style="display: flex; margin: 5px 2px;">
+        <b class="author" style="min-width: 10ch; margin-left: auto; text-align: right;">lorem-ipsum</b>
+        <p class="body_text" style="margin: 0px 5px; flex-grow: 1; min-width: 0; box-sizing: border-box; overflow-wrap: break-word;"></p>
+        <span class="created muted" style=" min-width: 15ch; ">some time ago</span>
     </article>
 </template>
 
@@ -76,12 +74,16 @@
         let result = await postMsg(Number(thread), name.value, body.value);
 
         if (!result.ok) {
-            error.textContent = result.body;
+            const data = await result.json().catch(() => ({}));
+            error.textContent = data.err || "Failed to post";
+            return;
         }
 
         console.log(result.board);
 
         body.value = "";
+
+        setCookie("name", name.value, 365);
 
         await load_messages();
 
@@ -110,7 +112,10 @@
     let thread = window.location.pathname.slice(3);
 
     let response = await fetch('/api/t/' + thread);
-
+    if (!response.ok) {
+        document.getElementById("thread_title").textContent = "Thread not found";
+        document.getElementById("post").hidden = true;
+    }
     let thread_data = await response.json();
 
     let board = thread_data["board"]
