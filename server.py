@@ -223,7 +223,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             log(file, file_type)
             self.send_response(200)
             self.send_header("Content-type", file_type)
-            self.send_header("Cache-Control", "public, max-age=3600, immutable")
+            self.send_header("Cache-Control", "public, max-age=3600, must-revalidate")
             self.end_headers()
             self.wfile.write(data)
 
