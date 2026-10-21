@@ -27,21 +27,7 @@
 
 <script type="module">
 
-    function timeAgo(timestamp) {
-        // Ensure timestamp is in milliseconds (multiply by 1000 if it's in seconds)
-        const diffMs = Date.now() - timestamp;
-        const diffSec = Math.floor(diffMs / 1000);
-        const diffMin = Math.floor(diffSec / 60);
-        const diffHours = Math.floor(diffMin / 60);
-        const diffDays = Math.floor(diffHours / 24);
-
-        if (diffSec < 60) return 'Just now';
-        if (diffMin < 60) return `${diffMin} min${diffMin === 1 ? '' : 's'} ago`;
-        if (diffHours < 24) return `${diffHours} hr${diffHours === 1 ? '' : 's'} ago`;
-        if (diffDays < 30) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
-        
-        return new Date(timestamp).toLocaleDateString();
-    }
+    import { timeAgo } from '/module.js';
 
     function add_entry(id, title, created) {
         let tem = document.getElementById("thread_template");

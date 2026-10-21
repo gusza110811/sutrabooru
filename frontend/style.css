@@ -18,7 +18,12 @@ html {
 ul {
     list-style-type: none;
     padding: 0;
-    margin: 5, 5, 0, 0;
+    margin: 5 5 0 0;
+}
+
+hr {
+    width: 100%;
+    color: #225522;
 }
 
 .muted {

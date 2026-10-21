@@ -13,6 +13,20 @@
 
     <div id="messages"></div>
 
+    <hr>
+
+    <div id="post">
+        <span><b>Name</b> <input type="text" name="name" id="post_name"> </span>
+        <br>
+        <span style="display: inline-block; vertical-align: text-top;">
+            <b>Message</b>
+            <textarea name="body" id="post_body" rows="5" style="vertical-align: top;"></textarea>
+        </span>
+        <br>
+        <button id="post_button">Join the conversation</button>
+        <span id="err" style="color: #FF2222;"></span>
+    </div>
+
 </body>
 </html>
 
@@ -26,23 +40,10 @@
     </article>
 </template>
 
+
 <script type="module">
 
-    function timeAgo(timestamp) {
-        // Ensure timestamp is in milliseconds (multiply by 1000 if it's in seconds)
-        const diffMs = Date.now() - timestamp;
-        const diffSec = Math.floor(diffMs / 1000);
-        const diffMin = Math.floor(diffSec / 60);
-        const diffHours = Math.floor(diffMin / 60);
-        const diffDays = Math.floor(diffHours / 24);
-
-        if (diffSec < 60) return 'Just now';
-        if (diffMin < 60) return `${diffMin} min${diffMin === 1 ? '' : 's'} ago`;
-        if (diffHours < 24) return `${diffHours} hr${diffHours === 1 ? '' : 's'} ago`;
-        if (diffDays < 30) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
-        
-        return new Date(timestamp).toLocaleDateString();
-    }
+    import {timeAgo, setCookie, getCookie, postMsg} from '/module.js'
 
     function add_entry(id, author, body, created) {
         let tem = document.getElementById("message_template");
@@ -57,6 +58,54 @@
         list.appendChild(clone);
     }
 
+    async function post_handler() {
+        let error = document.getElementById("err");
+
+        let name = document.getElementById("post_name");
+        if (name.value == "") {
+            error.textContent = "Name must not be empty";
+            return;
+        }
+
+        let body = document.getElementById("post_body");
+        if (body.value == "") {
+            error.textContent = "Message must not be empty";
+            return;
+        }
+
+        let result = await postMsg(Number(thread), name.value, body.value);
+
+        if (!result.ok) {
+            error.textContent = result.body;
+        }
+
+        console.log(result.board);
+
+        body.value = "";
+
+        await load_messages();
+
+    }
+
+    async function load_messages() {
+        document.getElementById("messages").replaceChildren()
+
+        response = await fetch('/api/ms/' + thread);
+
+        if (!response.ok) {
+            console.log("failed to load messages:", response.body);
+        }
+
+        let data = await response.json();
+
+        for (let item of data) {
+            add_entry(item["id"], item["author"], item["body"], item["created"]);
+        }
+    }
+
+    let post_button = document.getElementById("post_button");
+    post_button.addEventListener("click", post_handler);
+
     // `/t/...` (normally)
     let thread = window.location.pathname.slice(3);
 
@@ -69,19 +118,14 @@
     response = await fetch("/api/b/"+board);
     let board_data = await response.json();
 
+    load_messages()
+
     document.getElementById("board_name").href = "/b/" + board + "/";
     document.getElementById("board_name").textContent = "b/" + board + "/";
-    document.getElementById("thread_title").textContent = thread_data["title"]
-
-    response = await fetch('/api/ms/' + thread);
-
-    if (!response.ok) {
-        console.log("failed to load messages:", response.body);
+    document.getElementById("thread_title").textContent = thread_data["title"];
+    
+    if (getCookie("name")) {
+        document.getElementById("post_name").value = getCookie("name")
     }
 
-    let data = await response.json();
-
-    for (let item of data) {
-        add_entry(item["id"], item["author"], item["body"], item["created"]);
-    }
 </script>
