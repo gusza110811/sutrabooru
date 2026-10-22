@@ -16,6 +16,8 @@ def log(*msg):
 def err(*msg):
     print("[ERR]", *msg, file=sys.stderr)
 
+CREATE_BOARD_PERM = 2**0
+
 class Backend():
 
     def __init__(self):
@@ -55,8 +57,7 @@ class Backend():
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS tokens (
                 token TEXT NOT NULL,
-                create_board BOOLEAN NOT NULL DEFAULT 0,
-                create_token BOOLEAN NOT NULL DEFAULT 0
+                permissions INTEGER NOT NULL
             )
         """)
         if not self.file_existed:
@@ -71,24 +72,29 @@ class Backend():
         create_board("b","Anything and everything")
         create_board("meta","All about Sutrabooru")
 
+        token = secrets.token_urlsafe(16)
+        self.create_token(token,2**32-1) # i doubt i'll need more than 32 permissions
+
+        log("ADMIN TOKEN (WON'T BE SHOWN AGAIN):", token)
+
     def exists(self, table:str, key:str, match):
         self.cursor.execute(f"SELECT 1 FROM {table} WHERE {key} = ?;", (match,))
         return self.cursor.fetchall()
 
-    def create_board(self, name:str, description:str):
-        try:
-            self.cursor.execute("INSERT INTO boards (name, description) VALUES (?, ?) RETURNING name;", (name, description))
-        except sqlite3.IntegrityError:
-            return "Board name taken"
+    def create_board(self, name:str="", description:str=""):
         if not name:
             return "Name required"
         if not description:
             return "Description required"
+        try:
+            self.cursor.execute("INSERT INTO boards (name, description) VALUES (?, ?) RETURNING name;", (name, description))
+        except sqlite3.IntegrityError as e:
+            return str(e)
         res = self.cursor.fetchone()
         self.database.commit()
         return res
 
-    def create_thread(self, board:str, title:str):
+    def create_thread(self, board:str="", title:str=""):
         if not self.exists("boards","name",board):
             return f"Board {board} does not exist"
         if not title:
@@ -102,7 +108,7 @@ class Backend():
         self.cursor.execute("UPDATE threads SET bumped = ? WHERE id = ?", (int(time.time()), thread))
         self.database.commit()
 
-    def create_message(self, thread:int, author:str, body:str):
+    def create_message(self, thread:int=0, author:str="", body:str=""):
         if not self.exists("threads","id",thread):
             return f"Thread {thread} does not exist"
         if not author:
@@ -114,6 +120,17 @@ class Backend():
         self.database.commit()
         self.bump_thread(thread)
         return res
+
+    def create_token(self, token:str, permissions:int):
+        self.cursor.execute("INSERT INTO tokens (token, permissions) VALUES (?, ?)", (token, permissions))
+        self.database.commit()
+
+    def check_permission(self, token:str, permission:int):
+        self.cursor.execute("SELECT * FROM tokens WHERE token = ?;", (token,))
+        value = self.cursor.fetchone()["permissions"] or 0
+        if (permission & value) == permission:
+            return True
+        return False
 
     def generate_slice(self, source:str):
         start, count, *_ = source.split("~")
@@ -179,9 +196,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         }
 
         self.POST_handlers = {
-            #"b": backend.create_board,
-            "t": backend.create_thread,
-            "m": backend.create_message
+            "b": (backend.create_board, CREATE_BOARD_PERM),
+            "t": (backend.create_thread, 0),
+            "m": (backend.create_message, 0),
         }
         super().__init__(request,client_address,server)
 
@@ -272,21 +289,32 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self):
         parsed = urlparse(self.path)
+        token_header = self.headers.get("Authorization", None)
+        if token_header:
+            form, key = token_header.split(maxsplit=1)
+            if form.lower() != "bearer":
+                self.send_error_api(400, "Invalid authorization method")
+                return
+            token = key
+        else:
+            token = ""
+
         if parsed.path.startswith("/api/"):
             handler_name = parsed.path[5:]
-            handler = self.POST_handlers.get(handler_name,None)
+            handler, permissions = self.POST_handlers.get(handler_name,None)
             try:
                 length = int(self.headers.get("Content-Length", "0"))
             except ValueError:
                 self.send_error_api(400, "Invalid Content-Length")
                 return
             if length <= 0:
-                self.send_error_api(400, "body must exist")
+                self.send_error_api(400, "Body must exist")
                 return
-
             if length > 2**16:
-                self.send_error_api(413, "body too large")
+                self.send_error_api(413, "Body too large")
                 return
+            if not self.backend.check_permission(token,permissions):
+                self.send_error_api(401, "Token does not grant sufficient permission")
 
             param = self.rfile.read(length)
 
