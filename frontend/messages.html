@@ -69,8 +69,11 @@
 
         clone.querySelector('.container').id = id.toString();
 
-        for (let item of clone.querySelectorAll("button")) {
-            console.log(item, item.getAttribute('onclick'))
+        for (let item of clone.querySelectorAll("*")) {
+            if (!item.hasAttribute("onclick")) {
+                continue
+            }
+
             item.title = item.getAttribute('onclick');
         }
 
