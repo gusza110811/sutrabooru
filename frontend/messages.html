@@ -7,6 +7,7 @@
 
     <link rel="stylesheet" href="/style.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
+    <script src="/purify.js"></script>
 </head>
 <body id="body">
     <h1><a href="/">Sutrabooru</a></h1>
@@ -44,7 +45,12 @@
 
 <script type="module">
 
-    import {timeAgo, setCookie, getCookie, postMsg, sendNotification} from '/module.js'
+    import {timeAgo, setCookie, getCookie, postMsg, sendNotification} from '/module.js';
+
+    const config = {
+        ADD_TAGS: ['button'],       // Ensure the tag itself is allowed
+        ADD_ATTR: ['onclick'],      // Allow the user-initiated interaction attribute
+    };
 
     function add_entry(id, author, body, created) {
         let tem = document.getElementById("message_template");
@@ -56,10 +62,15 @@
         clone.querySelector('.created').dataset.time = created;
         clone.querySelector('.created').textContent = timeAgo(created*1000);
 
-        const body_formatted = marked.parse(body);
+        const body_formatted = DOMPurify.sanitize(marked.parse(body),config);
         clone.querySelector('.body_text').innerHTML = body_formatted;
 
         clone.querySelector('.container').id = id.toString();
+
+        for (let item of clone.querySelectorAll("button")) {
+            console.log(item, item.getAttribute('onclick'))
+            item.title = item.getAttribute('onclick');
+        }
 
         list.appendChild(clone);
     }
@@ -160,7 +171,7 @@
 
     let loading = load_messages();
 
-    const load_interval = setInterval(() => load_messages(true) & update_timestamps(), 5000)
+    const load_interval = setInterval(() => load_messages(true) & update_timestamps(), 1000)
 
     document.getElementById("board_name").href = "/b/" + board + "/";
     document.getElementById("board_name").textContent = "b/" + board + "/";
