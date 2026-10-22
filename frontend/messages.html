@@ -33,10 +33,10 @@
 </html>
 
 <template id="message_template">
-    <article style="display: flex; margin: 5px 2px;" class="container">
-        <b class="author" style="width: 10ch; min-width: 10ch; margin-left: auto; text-align: right;">lorem-ipsum</b>
-        <p class="body_text" style="margin: 0px 5px; flex-grow: 1; min-width: 0; box-sizing: border-box; overflow-wrap: break-word;"></p>
-        <span class="created muted" style="width: 15ch; min-width: 15ch; ">some time ago</span>
+    <article style="display: flex; padding: 3px 2px; margin: 5px 2px; align-items: center; background-color: #beffbe;" class="container">
+        <b class="author" style="width: 15ch; max-width: 15%; margin-left: auto; text-align: right;">lorem-ipsum</b>
+        <div class="body_text" style="padding: 2px 8px; min-width: calc(100% - 30ch); width: 65%; box-sizing: border-box;"></div>
+        <span class="created muted" style="width: 15ch; max-width: 20%; ">some time ago</span>
     </article>
 </template>
 
@@ -52,14 +52,20 @@
         let clone = tem.content.cloneNode(true);
 
         clone.querySelector('.author').textContent = author;
+        clone.querySelector('.created').dataset.time = created;
         clone.querySelector('.created').textContent = timeAgo(created*1000);
         clone.querySelector('.body_text').textContent = body;
-
-        console.log(clone.querySelector('.container'))
 
         clone.querySelector('.container').id = id.toString();
 
         list.appendChild(clone);
+    }
+
+    function update_timestamps() {
+        let list = document.getElementById("messages").querySelectorAll(".created");
+        for (let item of list) {
+            item.textContent = timeAgo(item.dataset.time*1000)
+        }
     }
 
     async function post_handler() {
@@ -147,7 +153,7 @@
 
     let loading = load_messages();
 
-    const load_interval = setInterval(() => load_messages(true), 5000)
+    const load_interval = setInterval(() => load_messages(true) & update_timestamps(), 5000)
 
     document.getElementById("board_name").href = "/b/" + board + "/";
     document.getElementById("board_name").textContent = "b/" + board + "/";
