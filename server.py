@@ -5,12 +5,13 @@ import json
 import time
 import os
 import secrets
+from urllib.parse import urlparse, parse_qs
 import mimetypes
 
 PORT = 3001
 
 def log(*msg):
-    print("[LOG]", *msg)
+    print("[LOG]", *msg, file=sys.stderr)
 
 def err(*msg):
     print("[ERR]", *msg, file=sys.stderr)
@@ -114,21 +115,25 @@ class Backend():
     def get_boards(self):
         self.cursor.execute("SELECT * FROM boards")
         return self.cursor.fetchall()
-    def get_threads(self, board:str, slice:str="0~-1"):
+
+    def get_threads(self, board:str, slice:str="0~-1", after:str="0"):
         slice = self.generate_slice(slice)
         order = "DESC"
         if slice[1] < 0:
-            slice[1] = 0-slice[1]
+            slice[1] = 0-slice[1]-1
             order = "ASC"
-        self.cursor.execute(f"SELECT * FROM threads WHERE board = ? ORDER BY bumped {order} LIMIT ? OFFSET ?;", (board,*slice))
+            after = int(after)
+        self.cursor.execute(f"SELECT * FROM threads WHERE board = ? AND id > {after} ORDER BY bumped {order} LIMIT ? OFFSET ?;", (board,*slice))
         return self.cursor.fetchall()
-    def get_messages(self, thread:int, slice:str="0~-1"):
+
+    def get_messages(self, thread:int, slice:str="0~-1", after:str="0"):
         slice = self.generate_slice(slice)
         order = "ASC"
         if slice[1] < 0:
-            slice[1] = 0-slice[1]
+            slice[1] = 0-slice[1]-1
             order = "DESC"
-        self.cursor.execute(f"SELECT * FROM messages WHERE thread = ? ORDER BY created {order} LIMIT ? OFFSET ?;", (thread,*slice))
+        after = int(after)
+        self.cursor.execute(f"SELECT * FROM messages WHERE thread = ? AND id > {after} ORDER BY created {order} LIMIT ? OFFSET ?;", (thread,*slice))
         return self.cursor.fetchall()
 
     def get_board(self, name):
@@ -186,18 +191,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def write(self, binary:bytes):
         #log(len(binary), binary)
         self.send_header("Content-length", str(len(binary)))
+        self.send_header("Connection", "keep-alive")
+        self.send_header("Keep-alive", "timeout=8, max=64")
         self.end_headers()
         self.wfile.write(binary)
 
     def do_GET(self):
-        if self.path.startswith("/api/"):
-            _, handler_name, *tail = [item for item in self.path[1:].split("/") if item]
+        parsed = urlparse(self.path)
+        if parsed.path.startswith("/api/"):
+            _, handler_name, *tail = [item for item in parsed.path.split("/") if item]
+            query = parse_qs(parsed.query)
+            query = {
+                key: val_list[0] for key, val_list in query.items() if val_list
+            }
+
             handler = self.GET_handlers.get(handler_name,None)
             if handler is None:
                 self.send_error_api(404, "Invalid Path")
             else:
                 try:
-                    result = handler(*tail)
+                    result = handler(*tail, **query)
                     if isinstance(result, tuple):
                         self.send_error_api(*result)
                         return
@@ -213,13 +226,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 except ValueError as e:
                     self.send_error_api(400, f"Invalid Arguments: {e}")
         else:
-            real_path = os.path.normpath("frontend" + self.path)
+            real_path = os.path.normpath("frontend" + parsed.path)
             log(real_path)
-            if self.path == "/":
+            if parsed.path == "/":
                 file = "frontend/boards.html"
-            elif self.path.startswith("/b/"):
+            elif parsed.path.startswith("/b/"):
                 file = "frontend/threads.html"
-            elif self.path.startswith("/t/"):
+            elif parsed.path.startswith("/t/"):
                 file = "frontend/messages.html"
             elif os.path.exists(real_path):
                 if not real_path.startswith("frontend"):
@@ -241,8 +254,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.write(data)
 
     def do_POST(self):
-        if self.path.startswith("/api/"):
-            handler_name = self.path[5:]
+        parsed = urlparse(self.path)
+        if parsed.path.startswith("/api/"):
+            handler_name = parsed.path[5:]
             handler = self.POST_handlers.get(handler_name,None)
             try:
                 length = int(self.headers.get("Content-Length", "0"))
