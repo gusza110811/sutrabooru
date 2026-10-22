@@ -58,6 +58,6 @@ export async function postMsg(thread, author, body) {
         body: JSON.stringify(payload)
     })
 
-    const data = await res.json().catch(() => ({}));
-    return { ok: res.ok, data: data};
+    const data = await result.json().catch(() => ({}));
+    return { ok: result.ok, data: data};
 }

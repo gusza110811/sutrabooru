@@ -80,7 +80,7 @@ class Backend():
             self.cursor.execute("INSERT INTO boards (name, description) VALUES (?, ?) RETURNING name;", (name, description))
         except sqlite3.IntegrityError:
             return "Board name taken"
-        res = self.cursor.fetchall()
+        res = self.cursor.fetchone()
         self.database.commit()
         return res
 
@@ -88,7 +88,7 @@ class Backend():
         if not self.exists("boards","name",board):
             return f"Board {board} does not exist"
         self.cursor.execute("INSERT INTO threads (board, created, bumped, title) VALUES (?, ?, ?, ?) RETURNING id;", (board, int(time.time()), int(time.time()), title))
-        res = self.cursor.fetchall()
+        res = self.cursor.fetchone()
         self.database.commit()
         return res
 
@@ -100,7 +100,7 @@ class Backend():
         if not self.exists("threads","id",thread):
             return f"Thread {thread} does not exist"
         self.cursor.execute("INSERT INTO messages (thread, created, author, body) VALUES (?, ?, ?, ?) RETURNING id;", (thread, int(time.time()), author, body))
-        res = self.cursor.fetchall()
+        res = self.cursor.fetchone()
         self.database.commit()
         self.bump_thread(thread)
         return res
@@ -292,7 +292,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         return
                     else:
                         self.send_response(201)
-                    result = [dict(item) for item in result]
+                    if isinstance(result,list):
+                        result = [dict(item) for item in result]
+                    else:
+                        result = dict(result)
                     self.send_header("Content-type", "application/json")
                     self.write(json.dumps(result).encode())
                 except TypeError as e:

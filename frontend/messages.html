@@ -31,7 +31,7 @@
 </html>
 
 <template id="message_template">
-    <article style="display: flex; margin: 5px 2px;">
+    <article style="display: flex; margin: 5px 2px;" class="container">
         <b class="author" style="width: 10ch; min-width: 10ch; margin-left: auto; text-align: right;">lorem-ipsum</b>
         <p class="body_text" style="margin: 0px 5px; flex-grow: 1; min-width: 0; box-sizing: border-box; overflow-wrap: break-word;"></p>
         <span class="created muted" style="width: 15ch; min-width: 15ch; ">some time ago</span>
@@ -52,6 +52,10 @@
         clone.querySelector('.author').textContent = author;
         clone.querySelector('.created').textContent = timeAgo(created*1000);
         clone.querySelector('.body_text').textContent = body;
+
+        console.log(clone.querySelector('.container'))
+
+        clone.querySelector('.container').id = id.toString();
 
         list.appendChild(clone);
     }
@@ -78,20 +82,23 @@
             return;
         }
 
-        console.log(result.board);
+        console.log(result);
 
         body.value = "";
+        body.focus();
+        body.select();
 
         setCookie("name", name.value, 365);
 
         await load_messages();
 
+        window.location.hash = last_msg_id.toString();
+
     }
 
     async function load_messages() {
-        document.getElementById("messages").replaceChildren()
 
-        response = await fetch('/api/ms/' + thread);
+        response = await fetch('/api/ms/' + thread + "?" + "after=" + last_msg_id);
 
         if (!response.ok) {
             console.log("failed to load messages:", response.body);
@@ -101,11 +108,22 @@
 
         for (let item of data) {
             add_entry(item["id"], item["author"], item["body"], item["created"]);
+            last_msg_id = item["id"]
         }
     }
 
+    let last_msg_id = 0;
+
     let post_button = document.getElementById("post_button");
     post_button.addEventListener("click", post_handler);
+
+    document.getElementById("post_body").addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+
+            post_handler();
+        }
+    });
 
     // `/t/...` (normally)
     let thread = window.location.pathname.slice(3);
@@ -122,14 +140,19 @@
     response = await fetch("/api/b/"+board);
     let board_data = await response.json();
 
-    load_messages()
+    let loading = load_messages();
+
 
     document.getElementById("board_name").href = "/b/" + board + "/";
     document.getElementById("board_name").textContent = "b/" + board + "/";
     document.getElementById("thread_title").textContent = thread_data["title"];
-    
+
     if (getCookie("name")) {
         document.getElementById("post_name").value = getCookie("name")
     }
+
+    await loading;
+
+    window.location.hash = last_msg_id.toString();
 
 </script>
