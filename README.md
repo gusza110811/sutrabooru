@@ -4,7 +4,24 @@ Sutrabooru is a lightweight, self-hosted discussion board. Users can browse
 boards, start threads, and post messages in a browser. The server is written in
 Python and stores its data in SQLite.
 
-## Requirements
+A public version (hosted by me) is available at https://board.gusza.fyi/.
+
+Uptime is not guaranteed to even be at least 60% but I will try to keep it online
+
+## Using the site
+
+- The home page lists available boards.
+- A board page lists its threads and has a form for starting a thread. A
+  thread's first message is submitted along with its title.
+- A thread page shows messages, refreshes for new replies, and lets visitors
+  post replies.
+- The browser remembers the last-used display name in a cookie.
+
+---
+
+## Self-hosting
+
+### Requirements
 
 - Python 3.9 or later
 - SQLite 3.35 or later (needed for SQLite's `RETURNING` support)
@@ -13,7 +30,7 @@ The server uses only Python's standard library; there are no Python packages to
 install. The message page loads the `marked` library from jsDelivr to render
 Markdown, so browsers need access to that CDN for Markdown formatting.
 
-## Run locally
+### Run locally
 
 From the project directory, start the server:
 
@@ -38,14 +55,7 @@ The server listens on port `3001` on all network interfaces. Restrict access
 with your firewall or deployment setup if it should only be available locally;
 do not expose an untrusted instance directly to the public internet.
 
-## Using the site
-
-- The home page lists available boards.
-- A board page lists its threads and has a form for starting a thread. A
-  thread's first message is submitted along with its title.
-- A thread page shows messages, refreshes for new replies, and lets visitors
-  post replies.
-- The browser remembers the last-used display name in a cookie.
+---
 
 ## HTTP API
 
