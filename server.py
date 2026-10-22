@@ -140,7 +140,7 @@ class Backend():
         return [int(count), int(start)]
 
     def get_boards(self):
-        self.cursor.execute("SELECT * FROM boards")
+        self.cursor.execute("SELECT * FROM boards ORDER BY name ASC")
         return self.cursor.fetchall()
 
     def get_threads(self, board:str, slice:str="0~-1", after:str="0"):
