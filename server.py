@@ -56,7 +56,7 @@ class Backend():
         """)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS tokens (
-                token TEXT NOT NULL,
+                token TEXT NOT NULL UNIQUE,
                 permissions INTEGER NOT NULL
             )
         """)
@@ -129,7 +129,7 @@ class Backend():
         self.cursor.execute("SELECT * FROM tokens WHERE token = ?;", (token,))
         value = self.cursor.fetchone()
         if value:
-            value = value["permission"]
+            value = value["permissions"]
         else:
             value = 0
         if (permission & value) == permission:
@@ -305,7 +305,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if parsed.path.startswith("/api/"):
             handler_name = parsed.path[5:]
-            handler, permissions = self.POST_handlers.get(handler_name,None)
+            handler, permissions = self.POST_handlers.get(handler_name,(None,None))
+
+            if handler is None:
+                self.send_error_api(404, "Invalid Path")
+                return
+
             try:
                 length = int(self.headers.get("Content-Length", "0"))
             except ValueError:
@@ -331,24 +336,21 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_error_api(400, f"Invalid JSON: {e}")
                 return
 
-            if handler is None:
-                self.send_error_api(404, "Invalid Path")
-            else:
-                try:
-                    result = handler(**param)
-                    if isinstance(result,str):
-                        self.send_error_api(400, result)
-                        return
-                    else:
-                        self.send_response(201)
-                    if isinstance(result,list):
-                        result = [dict(item) for item in result]
-                    else:
-                        result = dict(result)
-                    self.send_header("Content-type", "application/json")
-                    self.write(json.dumps(result).encode())
-                except TypeError as e:
-                    self.send_error_api(400, "Invalid Arguments")
+            try:
+                result = handler(**param)
+                if isinstance(result,str):
+                    self.send_error_api(400, result)
+                    return
+                else:
+                    self.send_response(201)
+                if isinstance(result,list):
+                    result = [dict(item) for item in result]
+                else:
+                    result = dict(result)
+                self.send_header("Content-type", "application/json")
+                self.write(json.dumps(result).encode())
+            except TypeError as e:
+                self.send_error_api(400, "Invalid Arguments")
         else:
             self.send_error(403)
 
