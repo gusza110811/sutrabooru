@@ -127,7 +127,11 @@ class Backend():
 
     def check_permission(self, token:str, permission:int):
         self.cursor.execute("SELECT * FROM tokens WHERE token = ?;", (token,))
-        value = self.cursor.fetchone()["permissions"] or 0
+        value = self.cursor.fetchone()
+        if value:
+            value = value["permission"]
+        else:
+            value = 0
         if (permission & value) == permission:
             return True
         return False
