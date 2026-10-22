@@ -71,7 +71,9 @@ class Backend():
 
         create_board("b","Anything and everything")
         create_board("meta","All about Sutrabooru")
+        self.gen_new_tok()
 
+    def gen_admin_tok(self):
         token = secrets.token_urlsafe(16)
         self.create_token(token,2**32-1) # i doubt i'll need more than 32 permissions
 
@@ -221,6 +223,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         return mimetypes.guess_type(name)[0] or "application/octet-stream"
 
     def send_error_api(self, code, message = None):
+        self.close_connection = True
         self.send_response(code)
         self.send_header("Content-type", "application/json")
         self.write(json.dumps({"err":message}).encode())
