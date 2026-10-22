@@ -48,8 +48,10 @@
     import {timeAgo, setCookie, getCookie, postMsg, sendNotification} from '/module.js';
 
     const config = {
-        ADD_TAGS: ['button'],       // Ensure the tag itself is allowed
-        ADD_ATTR: ['onclick'],      // Allow the user-initiated interaction attribute
+        ADD_TAGS: ['button'],
+        ADD_ATTR: ['onclick'],
+        FORBID_TAGS: ['style'],
+        FORBID_ATTR: ['style'],
     };
 
     function add_entry(id, author, body, created) {
