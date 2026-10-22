@@ -211,6 +211,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             else:
                 try:
                     result = handler(*tail, **query)
+                    if result is None:
+                        self.send_error_api(404)
+                        return
                     if isinstance(result, tuple):
                         self.send_error_api(*result)
                         return
@@ -235,7 +238,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             elif parsed.path.startswith("/t/"):
                 file = "frontend/messages.html"
             elif os.path.exists(real_path):
-                if not real_path.startswith("frontend"):
+                if not real_path.startswith("frontend/"):
                     self.send_error(403)
                     return
 

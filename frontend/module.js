@@ -87,7 +87,7 @@ export async function sendNotification(title, body, tag) {
         return;
     }
 
-    if (!Notification.permission !== "denied") {
+    if (Notification.permission === "default") {
         await Notification.requestPermission()
     }
 
