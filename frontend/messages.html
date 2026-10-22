@@ -11,6 +11,8 @@
 
     <h2> <a id="board_name" class="muted"></a> <span id="thread_title"></span></h2>
 
+    <hr>
+
     <div id="messages"></div>
 
     <hr>
@@ -23,8 +25,8 @@
             <textarea name="body" id="post_body" rows="5" style="vertical-align: top; resize: vertical; width: 20ch;"></textarea>
         </span>
         <br>
-        <button id="post_button">Join the conversation</button>
         <span id="err" style="color: #FF2222;"></span>
+        <button id="post_button">Join the conversation</button>
     </div>
 
 </body>
@@ -41,7 +43,7 @@
 
 <script type="module">
 
-    import {timeAgo, setCookie, getCookie, postMsg} from '/module.js'
+    import {timeAgo, setCookie, getCookie, postMsg, sendNotification} from '/module.js'
 
     function add_entry(id, author, body, created) {
         let tem = document.getElementById("message_template");
@@ -96,20 +98,23 @@
 
     }
 
-    async function load_messages() {
+    async function load_messages(do_notif=false) {
 
         response = await fetch('/api/ms/' + thread + "?" + "after=" + last_msg_id);
 
         if (!response.ok) {
             console.log("failed to load messages:", response.body);
         }
-
         let data = await response.json();
 
         for (let item of data) {
             add_entry(item["id"], item["author"], item["body"], item["created"]);
             last_msg_id = item["id"]
+            if (do_notif) {
+                sendNotification(item["author"] + " replied to a thread you're on", item["body"], item["id"])
+            }
         }
+
     }
 
     let last_msg_id = 0;
@@ -142,6 +147,7 @@
 
     let loading = load_messages();
 
+    const load_interval = setInterval(() => load_messages(true), 5000)
 
     document.getElementById("board_name").href = "/b/" + board + "/";
     document.getElementById("board_name").textContent = "b/" + board + "/";

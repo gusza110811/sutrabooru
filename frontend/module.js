@@ -61,3 +61,49 @@ export async function postMsg(thread, author, body) {
     const data = await result.json().catch(() => ({}));
     return { ok: result.ok, data: data};
 }
+
+export async function postThread(board, title) {
+    let payload = {
+        "board": board,
+        "title": title
+    }
+    console.log(payload)
+    let result = await fetch("/api/t", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+    })
+
+    const data = await result.json().catch(() => ({}));
+    return { ok: result.ok, data: data};
+}
+
+export async function sendNotification(title, body, tag) {
+    // 1. Check if the browser supports notifications
+    if (!("Notification" in window)) {
+        console.log("This browser does not support desktop notifications.");
+        return;
+    }
+
+    if (!Notification.permission !== "denied") {
+        await Notification.requestPermission()
+    }
+
+    // 2. Check if permission is already granted
+    if (Notification.permission === "granted") {
+        // Create and display the notification
+        const notification = new Notification(title, {
+            body: body,
+            icon: "/favicon.ico",
+            tag: tag
+        });
+
+        // Optional: Add a click event to focus the window or redirect
+        notification.onclick = function () {
+            window.focus();
+            this.close(); // Closes the notification window
+        };
+    }
+}
