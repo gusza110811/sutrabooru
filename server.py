@@ -80,6 +80,10 @@ class Backend():
             self.cursor.execute("INSERT INTO boards (name, description) VALUES (?, ?) RETURNING name;", (name, description))
         except sqlite3.IntegrityError:
             return "Board name taken"
+        if not name:
+            return "Name required"
+        if not description:
+            return "Description required"
         res = self.cursor.fetchone()
         self.database.commit()
         return res
@@ -87,6 +91,8 @@ class Backend():
     def create_thread(self, board:str, title:str):
         if not self.exists("boards","name",board):
             return f"Board {board} does not exist"
+        if not title:
+            return "Title must be a non-empty string"
         self.cursor.execute("INSERT INTO threads (board, created, bumped, title) VALUES (?, ?, ?, ?) RETURNING id;", (board, int(time.time()), int(time.time()), title))
         res = self.cursor.fetchone()
         self.database.commit()
@@ -99,6 +105,10 @@ class Backend():
     def create_message(self, thread:int, author:str, body:str):
         if not self.exists("threads","id",thread):
             return f"Thread {thread} does not exist"
+        if not author:
+            return "Name must be a non-empty string"
+        if not body:
+            return "Message must be a non-empty string"
         self.cursor.execute("INSERT INTO messages (thread, created, author, body) VALUES (?, ?, ?, ?) RETURNING id;", (thread, int(time.time()), author, body))
         res = self.cursor.fetchone()
         self.database.commit()
@@ -174,6 +184,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "m": backend.create_message
         }
         super().__init__(request,client_address,server)
+
+    def setup(self):
+        log("new connection from", *self.client_address)
+        return super().setup()
 
     def finish(self):
         self.backend.database.close()
@@ -267,7 +281,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_error_api(400, "Invalid Content-Length")
                 return
             if length <= 0:
-                self.send_error_api(413, "body must exist")
+                self.send_error_api(400, "body must exist")
                 return
 
             if length > 2**16:

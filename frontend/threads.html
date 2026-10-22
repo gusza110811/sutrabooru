@@ -13,14 +13,14 @@
     <div id="board_desc"></div>
     <hr>
 
-    <div id="post" style="align-self: center; width: fit-content; text-align: right;">
-        <span><b>Title</b> <input type="text" name="title" id="thread_title" style="width: 40ch;"> </span>
+    <div id="post" style="align-self: center; text-align: right; width: 90%;">
+        <span><b>Title</b> <input type="text" name="title" id="thread_title" style="width: 50%;"> </span>
         <br>
-        <span><b>Name</b> <input type="text" name="name" id="post_name" style="width: 20ch; margin-left: 20ch;"> </span>
+        <span><b>Name</b> <input type="text" name="name" id="post_name" style="width: 50%;"> </span>
         <br>
-        <span style="display: inline-block; vertical-align: text-top;">
+        <span style="vertical-align: text-top;">
             <b>Message</b>
-            <textarea name="body" id="post_body" rows="5" style="vertical-align: top; resize: vertical; width: 40ch;"></textarea>
+            <textarea name="body" id="post_body" rows="5" style="vertical-align: top; resize: vertical; width: 50%;"></textarea>
         </span>
         <br>
         <span id="err" style="color: #FF2222;"></span>
@@ -89,26 +89,32 @@
 
     }
 
-    function add_entry(id, title, created, msg, msg_created) {
+    function add_entry(id, title, created) {
         let tem = document.getElementById("thread_template");
         let list = document.getElementById("threads");
 
-        if (msg == undefined) {
-            msg = ""
-        }
-        if (msg_created == undefined) {
-            msg_created = created
-        }
+        let msg = ""
+        let msg_created = created
 
         let clone = tem.content.cloneNode(true);
-
-        clone.querySelector('.name').textContent = title;
-        clone.querySelector('.name').href = "/t/" + id;
-        clone.querySelector('.created').textContent = timeAgo(created*1000);
-        clone.querySelector(".latest_msg").textContent = msg;
-        clone.querySelector(".last_activity").textContent = timeAgo(msg_created*1000)
-
+        let entry = clone.querySelector("li");
         list.appendChild(clone);
+
+        fetch("/api/ms/" + id + "/-1~1").then( (response) => response.json().then( (json) => {
+            
+            let latest = json[0];
+            if (latest) {
+                msg = latest["body"]
+                msg_created = latest["created"]
+            }
+
+            entry.querySelector('.name').textContent = title;
+            entry.querySelector('.name').href = "/t/" + id;
+            entry.querySelector('.created').textContent = timeAgo(created*1000);
+            entry.querySelector(".latest_msg").textContent = msg;
+            entry.querySelector(".last_activity").textContent = timeAgo(msg_created*1000)
+        }
+        ))
     }
 
     document.getElementById("post_button").addEventListener("click", post_handler);
@@ -134,16 +140,9 @@
     let data = await response.json();
     console.log(data);
 
+    // make sure the elements are ordered
     for (let item of data) {
-        response = await fetch("/api/ms/" + item["id"] + "/-1~1") // last message; count of 1
-        let json = await response.json();
-        console.log(json);
-        let latest = json[0];
-        if (latest) {
-            add_entry(item["id"], item["title"],item["created"],latest["body"],latest["created"]);
-        } else {
-            add_entry(item["id"], item["title"],item["created"]);
-        }
+        add_entry(item["id"], item["title"],item["created"]);
     }
 
     if (getCookie("name")) {
