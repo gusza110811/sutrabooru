@@ -75,7 +75,9 @@ class Backend():
         token = secrets.token_urlsafe(16)
         self.create_token(token,2**32-1) # i doubt i'll need more than 32 permissions
 
-        log("ADMIN TOKEN (WON'T BE SHOWN AGAIN):", token)
+        log("ADMIN TOKEN, WON'T BE SHOWN AGAIN:", token)
+        log("Unless you log this - you're not supposed to do that on first run")
+        log("Delete data.db and run this from a terminal once if you're reading this from the persistent logs")
 
     def exists(self, table:str, key:str, match):
         self.cursor.execute(f"SELECT 1 FROM {table} WHERE {key} = ?;", (match,))
@@ -295,11 +297,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         token_header = self.headers.get("Authorization", None)
         if token_header:
-            form, key = token_header.split(maxsplit=1)
-            if form.lower() != "bearer":
+            parts = token_header.split(maxsplit=1)
+            if len(parts) != 2 or parts[0].lower() != "bearer":
                 self.send_error_api(400, "Invalid authorization method")
                 return
-            token = key
+            token = parts[1]
         else:
             token = ""
 
