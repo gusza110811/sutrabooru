@@ -20,18 +20,20 @@
 
     <hr>
 
-    <div id="post" style="justify-self: right; text-align: right;">
-        <span><b>Name</b> <input type="text" name="name" id="post_name" style="width: 20ch;"> </span>
-        <br>
-        <span style="display: inline-block; vertical-align: text-top;">
-            <b>Message</b>
-            <textarea name="body" id="post_body" rows="5" style="vertical-align: top; resize: vertical; width: 20ch;"></textarea>
-        </span>
-        <br>
-        <span id="err" style="color: #FF2222;"></span>
-        <button id="post_button">Join the conversation</button>
+    <div style="display: flex;">
+        <div id="preview" class="muted" style="padding-right: 10x; margin-right: auto">preview will appear here</div>
+        <div id="post" style="justify-self: right; text-align: right; padding: 10px; width: 40%; border-left: 2px solid #000000;">
+            <span><b>Name</b> <input type="text" name="name" id="post_name" style="width: 20ch;"> </span>
+            <br>
+            <span style="display: inline-block; vertical-align: text-top;">
+                <b>Message</b>
+                <textarea name="body" id="post_body" rows="5" style="vertical-align: top; resize: vertical; width: 20ch;"></textarea>
+            </span>
+            <br>
+            <span id="err" style="color: #FF2222;"></span>
+            <button id="post_button">Join the conversation</button>
+        </div>
     </div>
-
 </body>
 </html>
 
@@ -45,14 +47,7 @@
 
 <script type="module">
 
-    import {timeAgo, setCookie, getCookie, postMsg, sendNotification} from '/module.js';
-
-    const config = {
-        ADD_TAGS: ['button'],
-        ADD_ATTR: ['onclick'],
-        FORBID_TAGS: ['style'],
-        FORBID_ATTR: ['style'],
-    };
+    import {timeAgo, setCookie, getCookie, postMsg, sendNotification, renderMarkdown} from '/module.js';
 
     function add_entry(id, author, body, created) {
         let tem = document.getElementById("message_template");
@@ -64,18 +59,9 @@
         clone.querySelector('.created').dataset.time = created;
         clone.querySelector('.created').textContent = timeAgo(created*1000);
 
-        const body_formatted = DOMPurify.sanitize(marked.parse(body),config);
-        clone.querySelector('.body_text').innerHTML = body_formatted;
+        renderMarkdown(clone.querySelector('.body_text'), body);
 
         clone.querySelector('.container').id = id.toString();
-
-        for (let item of clone.querySelectorAll("*")) {
-            if (!item.hasAttribute("onclick")) {
-                continue
-            }
-
-            item.title = item.getAttribute('onclick');
-        }
 
         list.appendChild(clone);
     }
@@ -158,6 +144,9 @@
             post_handler();
         }
     });
+
+    let post_body = document.getElementById("post_body")
+    post_body.addEventListener('input',() => renderMarkdown(document.getElementById('preview'), post_body.value))
 
     // `/t/...` (normally)
     let thread = window.location.pathname.slice(3);

@@ -109,3 +109,23 @@ export async function sendNotification(title, body, tag) {
         };
     }
 }
+
+const config = {
+        ADD_TAGS: ['button'],
+        ADD_ATTR: ['onclick'],
+        FORBID_TAGS: ['style'],
+        FORBID_ATTR: ['style'],
+};
+
+export function renderMarkdown(element, source) {
+    const body_formatted = DOMPurify.sanitize(marked.parse(source),config);
+    element.innerHTML = body_formatted;
+
+    for (let item of element.querySelectorAll("*")) {
+        if (!item.hasAttribute("onclick")) {
+            continue
+        }
+
+        item.title = item.getAttribute('onclick');
+    }
+}
