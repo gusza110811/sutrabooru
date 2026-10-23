@@ -81,7 +81,10 @@ export async function postThread(board, title) {
 }
 
 export async function sendNotification(title, body, tag) {
-    // 1. Check if the browser supports notifications
+    if (document.visibilityState == "visible") {
+        return
+    }
+
     if (!("Notification" in window)) {
         console.log("This browser does not support desktop notifications.");
         return;
@@ -91,7 +94,6 @@ export async function sendNotification(title, body, tag) {
         await Notification.requestPermission()
     }
 
-    // 2. Check if permission is already granted
     if (Notification.permission === "granted") {
         // Create and display the notification
         const notification = new Notification(title, {
