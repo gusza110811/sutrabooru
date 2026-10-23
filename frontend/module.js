@@ -111,8 +111,8 @@ export async function sendNotification(title, body, tag) {
 }
 
 const config = {
-    ADD_TAGS: ['button', 'iframe'],
-    ADD_ATTR: ['onclick', 'frameborder', 'src'],
+    ADD_TAGS: ['button'],
+    ADD_ATTR: ['onclick'],
     FORBID_TAGS: ['style'],
     FORBID_ATTR: ['style'],
 };
