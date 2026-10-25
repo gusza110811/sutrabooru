@@ -7,6 +7,7 @@ import os
 import secrets
 from urllib.parse import urlparse, parse_qs
 import mimetypes
+import gzip
 
 PORT = 3001
 
@@ -210,6 +211,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         }
         super().__init__(request,client_address,server)
 
+    def handle_one_request(self):
+        begin = time.perf_counter()
+        super().handle_one_request()
+        log(f"spent {(time.perf_counter()-begin)*1000:,.0f}ms")
+
     def setup(self):
         log("new connection from", *self.client_address)
         return super().setup()
@@ -228,12 +234,21 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-type", "application/json")
         self.write(json.dumps({"err":message}).encode())
 
-    def write(self, binary:bytes):
+    def write(self, binary:bytes, compress=True, level=9):
+        accepted_compression = [item.strip() for item in self.headers.get("Accept-encoding","").split(",")]
+        do_compress = "gzip" in accepted_compression and compress
+
         #log(len(binary), binary)
+
+        if do_compress:
+            binary = gzip.compress(binary,level)
+            self.send_header("Content-encoding", "gzip")
         self.send_header("Content-length", str(len(binary)))
         self.send_header("Connection", "keep-alive")
         self.send_header("Keep-alive", "timeout=8, max=64")
+
         self.end_headers()
+
         self.wfile.write(binary)
 
     def do_GET(self):
@@ -269,6 +284,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 except ValueError as e:
                     self.send_error_api(400, f"Invalid Arguments: {e}")
         else:
+            compress = True
             real_path = os.path.normpath("frontend" + parsed.path)
             log(real_path)
             if parsed.path == "/":
@@ -290,11 +306,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
             data = open(file, "rb").read()
             file_type = self.guess_type(file)
 
+            if file_type.startswith("image"):
+                compress = False
+
             log(file, file_type)
             self.send_response(200)
             self.send_header("Content-type", file_type)
             self.send_header("Cache-Control", "public, max-age=3600, must-revalidate")
-            self.write(data)
+            self.write(data,compress=compress)
 
     def do_POST(self):
         parsed = urlparse(self.path)
